@@ -39,7 +39,7 @@ def scanFunc():
         # Check if file is a maya file
         for file in files:
             # TODO, support .ma files
-            if file.endswith(".mb"):
+            if file.endswith(".mb") and not file.endswith("_OK.mb") and not file.endswith("_CLEANED.mb") and not file.endswith("_INFECTED.mb"):
                 # Check if file is a maya file
                 # use forwardslash for maya
                 mayaFile = os.path.join(root, file).replace("\\", "/")
@@ -56,17 +56,17 @@ def checkVirus(testDir, quarantineIfVirus):
     data= {}
     cmds.file(testDir, o=True, f=True)   
     # Find Virus Nodes
-    virusfound = False
+    virusFound = False
     print("TEST-----------------------------------------------------------------------------------")
     script_nodes = cmds.ls(type="script")
     print(script_nodes)
     for script in script_nodes:
         #Check if virus scripts are in scene
         if "breed" in script or "vaccine" in script or "gene" in script:
-            virusfound = True
+            virusFound = True
             break    
     
-    if virusfound and quarantineIfVirus:
+    if virusFound and quarantineIfVirus:
         filepath = cmds.file(q=True, sn=True)
         filename = os.path.basename(filepath)
         
@@ -96,12 +96,46 @@ def checkVirus(testDir, quarantineIfVirus):
             shutil.move(filepath, movePath)
             print("File moved to quarantine")
     
-        #add file name to file
+        #log file
         data = {
             "filename": filename,
             "path": filepath
         }
-
+    elif virusFound == False:
+        filepath = cmds.file(q=True, sn=True)
+        filename = os.path.basename(filepath)
+        
+        print("File to move : " + filepath)
+        #replace prefix
+        #if a virus exists, take the filepath of the virus and replace the dir prefix with the quarantine prefix
+        #currentPath = filepath.replace(filepath, testDir)
+        movePath = testDir.replace(rootDir, quarantinePrefix)
+        #replace the file extension with _INFECTED.mb
+        if filepath.endswith(".mb"):
+            movePath = movePath.replace(".mb", "_OK.mb")
+        elif filepath.endswith(".ma"):
+            movePath = movePath.replace(".ma", "_OK.ma")
+        #move file to quarantine
+        print("Current path : " + testDir)
+        print("Moving file to quarantine path : " + movePath)
+        # create directory if it doesn't exist
+        if not os.path.exists(os.path.dirname(movePath)):
+            os.makedirs(os.path.dirname(movePath))
+            shutil.move(filepath, movePath)
+        # check if file exists
+        elif os.path.isfile(movePath):
+            # if file exists, delete file
+            print("File already exists in quarantine")
+        else:
+            # if directory exists, move file
+            shutil.move(filepath, movePath)
+            print("File moved to quarantine")
+    
+        #log file
+        data = {
+            "filename": filename,
+            "path": filepath
+        }
     #Create json if it doesn't exist
     jsonPath = "C:/Users/user/Desktop/scan.json"
     if not os.path.isfile(jsonPath):
@@ -115,7 +149,7 @@ def checkVirus(testDir, quarantineIfVirus):
             outfile.write(",")
             outfile.close()
     
-    return virusfound
+    return virusFound
     
 
 def cleanFiles():
@@ -125,7 +159,7 @@ def cleanFiles():
         # Check if file is a maya file
         #TODO, support .ma files
         for file in files:
-            if file.endswith(".mb"):
+            if file.endswith("_INFECTED.mb"):
                 # use forwardslash for maya
                 mayaFile = os.path.join(root, file).replace("\\", "/")
                 print("Cleaning: " + mayaFile)
@@ -146,7 +180,7 @@ def checkClean():
         # Check if file is a maya file
         #TODO, support .ma files
         for file in files:
-            if file.endswith(".mb"):
+            if file.endswith("_CLEANED.mb"):
                 # use forwardslash for maya
                 mayaFile = os.path.join(root, file).replace("\\", "/")
                 # Check if file has virus
