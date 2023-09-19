@@ -151,8 +151,6 @@ def checkVirus(mayaFile, rootDir, quarantinePrefix):
         elif mayaFile.endswith(".ma"):
             movePath = movePath.replace(".ma", "_OK.ma")
         #move file to quarantine
-        print("Current path : " + mayaFile)
-        print("Moving file to quarantine path : " + movePath)
         # create directory if it doesn't exist
         if not os.path.exists(os.path.dirname(movePath)):
             os.makedirs(os.path.dirname(movePath))
@@ -160,11 +158,10 @@ def checkVirus(mayaFile, rootDir, quarantinePrefix):
         # check if file exists
         elif os.path.isfile(movePath):
             # if file exists, delete file
-            print("File already exists in quarantine")
+            print("File already exists in path")
         else:
             # if directory exists, move file
             shutil.move(mayaFile, movePath)
-            print("File moved to quarantine")
     
         #log file
         data = {
@@ -211,37 +208,69 @@ def cleanFiles(rootDir):
                 os.rename(mayaFile, cleanedFilepath)
 
 # Check if cleaned files are still infected
-def checkClean(quarantinePrefix):
+def checkClean(quarantineDir, rootDir):
     print("Unquarantine Files")
-    quarantineDir = quarantinePrefix 
     for root, dirs, files in os.walk(quarantineDir):
         for file in files:
-            if file.endswith("_CLEANED.mb" or "_CLEANED.ma"):
-                # use forwardslash for maya
-                mayaFile = os.path.join(root, file).replace("\\", "/")
-                # Check if file has virus
+            mayaFile = os.path.join(root, file).replace("\\", "/")
+            movePath = mayaFile.replace(quarantineDir, rootDir) 
+            if file.endswith("_OK.mb") or file.endswith("_OK.ma"):
+                if mayaFile.endswith("_OK.mb"):
+                    movePath = movePath.replace("_OK.mb", ".mb")
+                elif mayaFile.endswith("_OK.ma"):
+                    movePath = movePath.replace("_OK.ma", ".ma")
+                shutil.move(mayaFile, movePath)
+            elif file.endswith("_CLEANED.mb") or file.endswith("_CLEANED.ma"):
                 print("Checking: " + mayaFile)
                 #Use already existing check virus function for this
-                cmds.file(mayaFile, o=True, f=True)   
-                # Find Virus Nodes
                 virusfound = False
+
+                # catch errors and move ono
+                try:
+                    cmds.file(mayaFile, o=True, f=True)
+                except:
+                    print("Error.. Moving on")
+
+                print("Virus found: " + str(virusfound))
+                # Find Virus Nodes
                 script_nodes = cmds.ls(type="script")
                 #print(script_nodes)
                 for script in script_nodes:
                     #Check if virus scripts are in scene
                     if "breed" in script or "vaccine" in script or "gene" in script:
                         virusfound = True
+                        print("Virus found")
                         break    
-                if checkVirus(mayaFile, False) == False:
+                print("Virus found: " + str(virusfound))
+                if virusfound == False:
+                    print("File is clean, moving back to original directory")
                     #move file back to original directory
-                    movePath = mayaFile.replace(quarantineDir, "X:/WayminderReloaded/Like")
                     if mayaFile.endswith("_CLEANED.mb"):
                         movePath = movePath.replace("_INFECTED_CLEANED.mb", ".mb")
                     elif mayaFile.endswith("_CLEANED.ma"):
                         movePath = movePath.replace("_INFECTED_CLEANED.ma", ".ma")
+                else:
+                    print("File is still infected, marking CleanMe")
+                    if mayaFile.endswith("_CLEANED.mb"):
+                        movePath = movePath.replace("_INFECTED_CLEANED.mb", "_CLEANME.mb")
+                    elif mayaFile.endswith("_CLEANED.ma"):
+                        movePath = movePath.replace("_INFECTED_CLEANED.ma", "_CLEANME.ma")
                     shutil.move(mayaFile, movePath)
-                    print("File is safe")
+                    print("File is still infected" + movePath)
 
+                if not os.path.exists(os.path.dirname(movePath)):
+                    print("Directory does not exist.. Creating directory")
+                    os.makedirs(os.path.dirname(movePath))
+                    shutil.move(mayaFile, movePath)
+        # check if file exists
+                elif os.path.isfile(movePath):
+            # if file exists, delete file
+                    print("File already exists in path")
+                else:
+                    print("Directory exists.. Moving file")
+            # if directory exists, move file
+                    shutil.move(mayaFile, movePath)
+                print("Done")
 
 print("Maya Vaccine Scan")
 print("0 = Normalize Names")
@@ -283,8 +312,13 @@ if arg == 1:
 elif arg == 2:
     cleanFiles(InfectedRootDir)
 elif arg == 3:
+        maya.standalone.initialize()
+
+        #Let Maya Load before running script
+        utils.executeDeferred(checkClean(InfectedRootDir, QuarantineRootDir))
+
+        maya.standalone.uninitialize() 
     # Once quarantine is done, check if files are still infected
-    checkClean(QuarantineRootDir)
 elif arg == 4:
     print("Please check if a Maya Enviroment is running in your Python Console as documented: y/n??")
     if input() == "y":
