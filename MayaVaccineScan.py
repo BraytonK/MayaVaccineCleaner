@@ -381,23 +381,32 @@ def cleanText(qurantineDir, rootDir):
                     startOfNode = 0
                     numberOfLinesDeleted = 0
                     infectedNode = False
+                    infectedLines = []
                     with open(mayaFile, 'r') as openedFile:
                         lines = openedFile.readlines()
                         lineCount = len(lines)
                         totalLinesDeleted = 0
                         infectedFile = False
                     #    infectedIndexArray = []
-                        for i, line in enumerate(lines):
+                        i = 0
+                        linesCopy = lines
+                        for line in linesCopy:
                             numberOfLinesDeleted = 0
                             if not line.startswith('\t'):
-                                print('start of node' +  str(i))
+                                print('start of node' +  str(i) + ' ' + line)
                                 if infectedNode == True:
+                                    #startOfNode = startOfNode - totalLinesDeleted
+                                    #endOfNode = endOfNode - totalLinesDeleted
                                     print("deleting lines: " + str(startOfNode) + " to " + str(endOfNode))
-                                    # TODO, this is not working
                                     print("deleting " + lines[startOfNode] + " to: " + lines[endOfNode]) 
-                                    del lines[startOfNode:endOfNode]
+                                   # del lines[startOfNode:endOfNode]
+                                    j = startOfNode
+                                    while j < endOfNode:
+                                        infectedLines.append(j)
+                                        j = j + 1
                                     numberOfLinesDeleted = endOfNode - startOfNode
                                     totalLinesDeleted = totalLinesDeleted + numberOfLinesDeleted
+                                    print("new line count : " + str(len(lines)))
                                 if "vaccine" in line or "breed" in line or "gene" in line:
                                     infectedNode = True
                                     infectedFile = True
@@ -405,7 +414,7 @@ def cleanText(qurantineDir, rootDir):
                                 else:
                                     infectedNode = False
                                 #startOfNode = i
-                                startOfNode = i - totalLinesDeleted 
+                                startOfNode = i
                             
                             if line.startswith('\t'):
                                 print("midnode found at " + str(i))
@@ -416,7 +425,10 @@ def cleanText(qurantineDir, rootDir):
                                     # if found, goto the next line with no tab and save the line number - 1 as end of the node
                                     # select the lines from start to end and delete them
                                     #startOfNode = i + 1
-                                endOfNode = i - totalLinesDeleted + 1
+                                endOfNode = i + 1
+                            i = i + 1
+                        for lineNumber in infectedLines:
+                            lines[lineNumber] = ""
                 #ask user if they want the nodes to be deleted
             #    print("Do you want to delete the infected nodes? y/n")
             #    contDelete = input()
